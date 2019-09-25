@@ -13,6 +13,9 @@ import {
 } from '../../components/global';
 
 export default function SignUp({ navigation }) {
+
+
+
   return (
     <Background>
       <Container>
