@@ -8,7 +8,6 @@ import SignUp from './pages/SignUp';
 import Main from './pages/Main';
 import Subscriptions from './pages/Subscriptions';
 import Profile from './pages/Profile';
-import Loading from './pages/Loading';
 
 const AuthStack = createStackNavigator({
   Login,
@@ -32,10 +31,15 @@ const AppStack = createBottomTabNavigator(
   }
 );
 
-export default createAppContainer(
-  createSwitchNavigator({
-    AuthStack,
-    Loading,
-    AppStack,
-  })
-);
+export default (isSigned = false) =>
+  createAppContainer(
+    createSwitchNavigator(
+      {
+        AuthStack,
+        AppStack,
+      },
+      {
+        initialRouteName: isSigned ? 'AppStack' : 'AuthStack',
+      }
+    )
+  );

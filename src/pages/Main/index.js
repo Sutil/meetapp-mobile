@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { format, parseISO } from 'date-fns';
+import pt from 'date-fns/locale/pt';
 import Background from '../../components/Background';
 import Header from '../../components/Header';
-import { DateSelector } from './styles';
+
+import DateSelector from '../../components/DateSelector';
 import {
   Container,
   Button,
@@ -14,45 +18,67 @@ import {
   MeetTitle,
   MeetText,
 } from '../../components/global';
+import api from '../../services/api';
 
 export default function Main() {
-  const meets = [
-    {
-      id: 1,
-      title: 'React Native Day',
-      date: new Date(),
-      address: 'Av. Pres. Juscelino Kubtschec, 355',
-      organizer: 'Eduardo Sutil',
-      image: 'https://www.bonde.com.br/img/bondenews/2019/03/img_1_69_4560.jpg',
-    },
-    {
-      id: 2,
-      title: 'React Native Day',
-      date: new Date(),
-      address: 'Av. Pres. Juscelino Kubtschec, 355',
-      organizer: 'Eduardo Sutil',
-      image:
-        'https://i2.wp.com/eduardomarostica.com.br/wp-content/uploads/2018/06/como-a-palestra-de-atendimento-ao-cliente-pode-ajudar-a-sua-empresa.jpg?fit=3130%2C1746&ssl=1',
-    },
-  ];
+  const [meets, setMeets] = useState([]);
+  const [date, setDate] = useState(new Date());
+
+  const formattedDate = useMemo(() => {
+    return format(date, 'yyyy-MM-dd');
+  }, [date]);
+
+  useEffect(() => {
+    async function loadMeetups() {
+      const response = await api.get(`meetups/?page=1&date=${formattedDate}`);
+
+      const list = response.data.map(m => {
+        return {
+          ...m,
+          formattedDate: format(
+            parseISO(m.date),
+            "dd 'de' MMMM 'às' HH:mm'h'",
+            { locale: pt }
+          ),
+        };
+      });
+
+      setMeets(list);
+    }
+
+    loadMeetups();
+  }, [date]);
+
+  function onDateChange(newDate) {
+    setDate(newDate);
+  }
+
+  async function handleSubscription(meetup) {
+    try {
+      await api.post('subscription', { meetup_id: meetup.id });
+      Alert.alert('Sucesso', `Você está inscrito em '${meetup.title}'`);
+    } catch (err) {
+      Alert.alert('Erro', JSON.stringify(err.response.data.error));
+    }
+  }
 
   return (
     <Background>
       <Header />
       <Container>
-        <DateSelector>31 de Maio</DateSelector>
+        <DateSelector onChange={onDateChange} />
         <MeetList
           data={meets}
           keyExtractor={item => String(item.id)}
           renderItem={({ item }) => (
             <Meet>
-              <MeetImage source={{ uri: item.image }} />
+              <MeetImage source={{ uri: item.image.url }} />
               <MeetInfos>
                 <MeetTitle>{item.title}</MeetTitle>
-                <MeetText>24 de Junho às 20h</MeetText>
-                <MeetText>Avenida Brasil, 244</MeetText>
-                <MeetText>Organizador: Eduardo Sutil</MeetText>
-                <Button>
+                <MeetText>{item.formattedDate}</MeetText>
+                <MeetText>{item.location}</MeetText>
+                <MeetText>Organizador: {item.organizer.name}</MeetText>
+                <Button onPress={() => handleSubscription(item)}>
                   <ButtonText>Realizar inscrição</ButtonText>
                 </Button>
               </MeetInfos>

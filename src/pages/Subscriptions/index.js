@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { withNavigationFocus } from 'react-navigation';
+import { Alert } from 'react-native';
+import { format, parseISO } from 'date-fns';
+import pt from 'date-fns/locale/pt';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Background from '../../components/Background';
 import Header from '../../components/Header';
@@ -13,27 +17,47 @@ import {
   Button,
   ButtonText,
 } from '../../components/global';
+import api from '../../services/api';
 
-export default function Subscriptions() {
-  const meets = [
-    {
-      id: 1,
-      title: 'React Native Day',
-      date: new Date(),
-      address: 'Av. Pres. Juscelino Kubtschec, 355',
-      organizer: 'Eduardo Sutil',
-      image: 'https://www.bonde.com.br/img/bondenews/2019/03/img_1_69_4560.jpg',
-    },
-    {
-      id: 2,
-      title: 'React Native Day',
-      date: new Date(),
-      address: 'Av. Pres. Juscelino Kubtschec, 355',
-      organizer: 'Eduardo Sutil',
-      image:
-        'https://i2.wp.com/eduardomarostica.com.br/wp-content/uploads/2018/06/como-a-palestra-de-atendimento-ao-cliente-pode-ajudar-a-sua-empresa.jpg?fit=3130%2C1746&ssl=1',
-    },
-  ];
+function Subscriptions({ isFocused }) {
+  const [meets, setMeets] = useState([]);
+
+  async function loadMeetups() {
+    try {
+      const response = await api.get('subscription');
+
+      const list = response.data.map(s => {
+        return {
+          subscriptionId: s.id,
+          ...s.meetup,
+          formattedDate: format(
+            parseISO(s.meetup.date),
+            "dd 'de' MMMM 'às' HH:mm'h'",
+            { locale: pt }
+          ),
+        };
+      });
+
+      setMeets(list);
+    } catch (err) {
+      Alert.alert('Erro', `Falha ao listar inscrições`);
+    }
+  }
+
+  useEffect(() => {
+    loadMeetups();
+  }, [isFocused]);
+
+  async function handleCancel(meetup) {
+    try {
+      await api.delete(`subscription/${meetup.subscriptionId}`);
+      Alert.alert('Erro', 'Inscrição cancelada');
+
+      loadMeetups();
+    } catch (err) {
+      Alert.alert('Erro', err.response.data.error);
+    }
+  }
 
   return (
     <Background>
@@ -44,13 +68,13 @@ export default function Subscriptions() {
           keyExtractor={item => String(item.id)}
           renderItem={({ item }) => (
             <Meet>
-              <MeetImage source={{ uri: item.image }} />
+              <MeetImage source={{ uri: item.image.url }} />
               <MeetInfos>
                 <MeetTitle>{item.title}</MeetTitle>
                 <MeetText>24 de Junho às 20h</MeetText>
                 <MeetText>Avenida Brasil, 244</MeetText>
                 <MeetText>Organizador: Eduardo Sutil</MeetText>
-                <Button warn>
+                <Button warn onPress={() => handleCancel(item)}>
                   <ButtonText>Cancelar inscrição</ButtonText>
                 </Button>
               </MeetInfos>
@@ -63,8 +87,10 @@ export default function Subscriptions() {
 }
 
 Subscriptions.navigationOptions = {
-  tabBarLabel: 'Meetups',
+  tabBarLabel: 'Inscrições',
   tabBarIcon: ({ tintColor }) => (
     <Icon name="local-offer" size={20} color={tintColor} />
   ),
 };
+
+export default withNavigationFocus(Subscriptions);
